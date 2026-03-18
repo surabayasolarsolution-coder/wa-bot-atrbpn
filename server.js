@@ -5,7 +5,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-const TOKEN = process.env.FONNTE_TOKEN;
+const TOKEN = "1js38VooEe2shQ7RAj89";
 console.log("TOKEN ADA:", !!TOKEN);
 console.log("TOKEN PANJANG:", TOKEN ? TOKEN.length : 0);
 console.log("TOKEN PREVIEW:", TOKEN ? TOKEN.slice(0, 8) + "..." : "KOSONG");
