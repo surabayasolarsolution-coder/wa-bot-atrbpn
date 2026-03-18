@@ -34,20 +34,17 @@ app.post("/webhook", async (req, res) => {
       req.body.data?.text ||
       "";
 
+    console.log("SENDER:", sender);
+    console.log("MESSAGE:", message);
+
     if (!sender) {
-      console.log("Sender tidak ditemukan");
+      console.log("❌ sender kosong");
       return res.status(200).send("no sender");
     }
 
-    let reply = "Halo 👋 ini bot ATR/BPN Kota Batu";
+    const reply = "Halo 👋 dari bot Railway";
 
-    const msg = String(message).toLowerCase().trim();
-    if (["halo", "hallo", "hai", "hi"].includes(msg)) {
-      reply =
-        "Halo 👋 Selamat datang di ATR/BPN Kota Batu.\nKetik menu untuk pilihan layanan.";
-    }
-
-    const sendResult = await axios.post(
+    const response = await axios.post(
       "https://api.fonnte.com/send",
       {
         target: sender,
@@ -60,16 +57,13 @@ app.post("/webhook", async (req, res) => {
       }
     );
 
-    console.log("Berhasil kirim:", sendResult.data);
-    return res.status(200).send("ok");
-  } catch (error) {
-    console.error("WEBHOOK ERROR:");
-    console.error(error.response?.data || error.message);
-    return res.status(200).send("error handled");
-  }
-});
+    console.log("✅ BERHASIL KIRIM:", response.data);
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log("Server jalan di port", PORT);
+    res.status(200).send("ok");
+  } catch (error) {
+    console.log("❌ ERROR KIRIM:");
+    console.log(error.response?.data || error.message);
+
+    res.status(200).send("error");
+  }
 });
