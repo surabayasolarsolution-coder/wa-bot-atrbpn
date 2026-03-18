@@ -7,39 +7,16 @@ app.use(express.urlencoded({ extended: true }));
 
 const TOKEN = process.env.FONNTE_TOKEN;
 
-const sessions = {};
-const processedMessages = new Set();
-
-async function kirimPesan(target, message) {
-  const formData = new URLSearchParams();
-  formData.append("target", target);
-  formData.append("message", message);
-
-  const response = await axios.post(
-    "https://api.fonnte.com/send",
-    formData,
-    {
-      headers: {
-        Authorization: TOKEN,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      timeout: 30000,
-    }
-  );
-
-  console.log("RESPONSE FONNTE:", response.data);
-  return response.data;
-}
+console.log("ENV TOKEN ADA:", !!TOKEN);
+console.log("ENV TOKEN PANJANG:", TOKEN ? TOKEN.length : 0);
+console.log("ENV TOKEN PREVIEW:", TOKEN ? TOKEN.slice(0, 6) + "..." : "KOSONG");const repliedMessages = new Set();
 
 app.get("/", (req, res) => {
-  res.send("Bot ATR/BPN aktif 🚀");
+  res.send("Bot WhatsApp aktif 🚀");
 });
 
 app.get("/health", (req, res) => {
-  res.json({
-    status: "ok",
-    token: !!TOKEN,
-  });
+  res.json({ status: "ok" });
 });
 
 app.get("/webhook", (req, res) => {
@@ -49,143 +26,85 @@ app.get("/webhook", (req, res) => {
 app.post("/webhook", async (req, res) => {
   try {
     const body = req.body || {};
-    console.log("WEBHOOK MASUK:", JSON.stringify(body, null, 2));
 
-    const sender = body.sender || body.number || body.from || body.pengirim;
-    const pesan = String(body.message || body.pesan || "")
+    console.log("Webhook masuk:", JSON.stringify(body, null, 2));
+
+    const pesan = String(body.pesan || body.message || body.text || "")
       .trim()
       .toLowerCase();
 
+    const sender = body.sender || body.pengirim || body.from || body.number;
+    const messageId = body.id || body.senderid || `${sender}-${pesan}-${body.timestamp || Date.now()}`;
     const isGroup = body.isgroup === true || body.isgroup === "true";
 
-    const messageId =
-      body.id ||
-      body.senderid ||
-      `${sender}-${pesan}-${body.timestamp || Date.now()}`;
-
-    if (!sender) {
-      console.log("Sender tidak ditemukan");
+    if (!sender || isGroup) {
       return res.sendStatus(200);
     }
 
-    if (isGroup) {
-      console.log("Pesan grup, skip");
-      return res.sendStatus(200);
-    }
-
-    if (processedMessages.has(messageId)) {
+    if (repliedMessages.has(messageId)) {
       console.log("Pesan duplikat, skip:", messageId);
       return res.sendStatus(200);
     }
 
-    processedMessages.add(messageId);
-    setTimeout(() => processedMessages.delete(messageId), 5 * 60 * 1000);
+    repliedMessages.add(messageId);
 
-    if (!sessions[sender]) {
-      sessions[sender] = { step: "menu" };
-    }
+    setTimeout(() => {
+      repliedMessages.delete(messageId);
+    }, 5 * 60 * 1000);
 
-    const session = sessions[sender];
-    let balasan = "";
+    let balasan = "Halo 👋, silakan ketik *menu*";
 
-    if (pesan === "halo" || pesan === "hai" || pesan === "menu") {
-      session.step = "menu";
+    if (pesan.includes("halo")) {
+      balasan = "Halo 👋 Selamat datang di ATR/BPN Kota Batu";
+    } else if (pesan === "menu") {
       balasan =
-        "👋 *ATR/BPN Kota Batu*\n\n" +
-        "📋 *Menu Layanan:*\n" +
+        "📋 *Menu Layanan ATR/BPN Kota Batu*\n\n" +
         "1. Informasi Sertifikat\n" +
-        "2. Cek Status Berkas\n" +
-        "3. Info Kantor\n" +
-        "4. Pengaduan\n" +
-        "5. Kontak Admin\n\n" +
-        "Ketik angka menu.";
+        "2. Cek Berkas\n" +
+        "3. Kontak Admin\n\n" +
+        "Ketik angka *1*, *2*, atau *3*.";
     } else if (pesan === "1") {
-      session.step = "menu";
       balasan =
-        "📄 *Informasi Sertifikat*\n\n" +
-        "- Fotokopi KTP\n" +
-        "- Fotokopi KK\n" +
-        "- Bukti kepemilikan tanah\n" +
-        "- Dokumen pendukung lainnya sesuai layanan\n\n" +
-        "Ketik *menu* untuk kembali.";
+        "📄 *Informasi Sertifikat*\n" +
+        "Silakan kirim nomor berkas atau pertanyaan Anda terkait sertifikat.";
     } else if (pesan === "2") {
-      session.step = "cek_berkas";
       balasan =
-        "📂 Silakan kirim *nomor berkas* Anda.\n" +
-        "Contoh: *BKS-2026-0001*";
-    } else if (session.step === "cek_berkas") {
-      const nomor = pesan.toUpperCase();
-
-      const dummy = {
-        "BKS-2026-0001": "Sedang diproses",
-        "BKS-2026-0002": "Selesai",
-        "BKS-2026-0003": "Menunggu verifikasi",
-      };
-
-      const status = dummy[nomor];
-
-      if (status) {
-        balasan =
-          `📂 *Status Berkas*\n\n` +
-          `Nomor: ${nomor}\n` +
-          `Status: ${status}\n\n` +
-          `Ketik *menu* untuk kembali.`;
-      } else {
-        balasan =
-          `❌ Nomor berkas *${nomor}* tidak ditemukan.\n` +
-          `Periksa lagi nomor berkas Anda atau ketik *menu*.`;
-      }
-
-      session.step = "menu";
+        "📂 *Cek Berkas*\n" +
+        "Silakan kirim nomor berkas Anda untuk dilakukan pengecekan.";
     } else if (pesan === "3") {
-      session.step = "menu";
-      balasan =
-        "📍 *Info Kantor ATR/BPN Kota Batu*\n\n" +
-        "Alamat: Jl. Contoh No.123\n" +
-        "Jam Layanan: 08.00 - 15.00 WIB\n\n" +
-        "Ketik *menu* untuk kembali.";
-    } else if (pesan === "4") {
-      session.step = "aduan_nama";
-      balasan = "📝 Silakan kirim *nama Anda* untuk pengaduan.";
-    } else if (session.step === "aduan_nama") {
-      session.nama = body.message || body.pesan || "";
-      session.step = "aduan_isi";
-      balasan = "Tuliskan *isi pengaduan* Anda.";
-    } else if (session.step === "aduan_isi") {
-      const isiAduan = body.message || body.pesan || "";
-      const tiket = "TIKET-" + Date.now();
-
-      balasan =
-        "✅ *Pengaduan diterima*\n\n" +
-        `No Tiket: ${tiket}\n` +
-        `Nama: ${session.nama}\n` +
-        `Isi: ${isiAduan}\n\n` +
-        "Petugas akan menindaklanjuti. Ketik *menu* untuk kembali.";
-
-      session.step = "menu";
-      delete session.nama;
-    } else if (pesan === "5") {
-      session.step = "menu";
       balasan =
         "☎️ *Kontak Admin*\n" +
-        "Hubungi admin di: 08xxxxxxxxxx\n\n" +
-        "Ketik *menu* untuk kembali.";
-    } else {
-      balasan = "Silakan ketik *menu* untuk melihat layanan.";
+        "Hubungi admin ATR/BPN Kota Batu di nomor: 08xxxxxxxxxx";
     }
 
-    console.log("BALASAN:", balasan);
+    const formData = new URLSearchParams();
+    formData.append("target", sender);
+    formData.append("message", balasan);
 
-    await kirimPesan(sender, balasan);
+   const response = await axios.post(
+  "https://api.fonnte.com/send",
+  formData,
+  {
+    headers: {
+      Authorization: TOKEN,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+  }
+);
 
-    return res.sendStatus(200);
+console.log("RESPONSE FONNTE:", response.data);
+      }
+    );
+
+    console.log("Balasan terkirim:", response.data);
+    res.sendStatus(200);
   } catch (err) {
-    console.log("ERROR WEBHOOK:", err.response?.data || err.message);
-    return res.sendStatus(200);
+    console.log("Error webhook:", err.response?.data || err.message);
+    res.sendStatus(200);
   }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log("Server jalan di port", PORT);
+  console.log(`Server jalan di port ${PORT}`);
 });
