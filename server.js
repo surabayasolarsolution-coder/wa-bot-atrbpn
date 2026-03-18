@@ -9,8 +9,11 @@ app.get("/", (req, res) => {
 });
 
 app.post("/webhook", async (req, res) => {
-  console.log("Webhook masuk:", req.body);
+  console.log("=== MASUK WEBHOOK ===");
+  console.log(JSON.stringify(req.body, null, 2));
 
+  res.status(200).send("ok");
+});
   const message = req.body.message || "";
   const sender = req.body.sender;
 
