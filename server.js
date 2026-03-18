@@ -19,35 +19,28 @@ app.get("/health", (req, res) => {
 app.post("/webhook", async (req, res) => {
   const body = req.body;
 
-  console.log("Webhook masuk:", JSON.stringify(body, null, 2));
+  console.log("ISI BODY:", JSON.stringify(body, null, 2));
 
-  if (!body || !body.data) return res.sendStatus(200);
+  let messages = [];
 
-  for (let msg of body.data) {
-    // skip kalau bukan pesan masuk
-    if (msg.isGroup) continue;
-    if (msg.status) continue;
+  if (body.data) {
+    messages = body.data;
+  } else {
+    messages = [body];
+  }
 
+  for (let msg of messages) {
     const pesan = (msg.text || "").toLowerCase();
-    const sender = msg.sender;
+    const sender = msg.sender || msg.from;
+
+    if (!sender) continue;
+
+    console.log("Pesan:", pesan, "Dari:", sender);
 
     let balasan = "Halo 👋, silakan ketik *menu*";
 
     if (pesan.includes("halo")) {
       balasan = "Halo 👋 Selamat datang di ATR/BPN Kota Batu";
-    } else if (pesan.includes("menu")) {
-      balasan =
-        "📋 *Menu Layanan:*\n\n" +
-        "1. Informasi Sertifikat\n" +
-        "2. Cek Berkas\n" +
-        "3. Kontak Admin\n\n" +
-        "Ketik angka (1/2/3)";
-    } else if (pesan === "1") {
-      balasan = "Silakan kirim nomor berkas sertifikat Anda.";
-    } else if (pesan === "2") {
-      balasan = "Silakan kirim nomor berkas untuk pengecekan.";
-    } else if (pesan === "3") {
-      balasan = "Hubungi admin di 08xxxxxxxxxx";
     }
 
     try {
@@ -59,21 +52,16 @@ app.post("/webhook", async (req, res) => {
         },
         {
           headers: {
-            Authorization: TOKEN,
+            Authorization: process.env.FONNTE_TOKEN,
           },
         }
       );
 
       console.log("Balasan sukses:", response.data);
     } catch (err) {
-      console.log("Gagal kirim:", err.response?.data || err.message);
+      console.log("ERROR KIRIM:", err.response?.data || err.message);
     }
   }
 
   res.sendStatus(200);
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log("Server jalan di port", PORT);
 });
