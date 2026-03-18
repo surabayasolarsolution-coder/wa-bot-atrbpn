@@ -1,21 +1,3 @@
-const express = require("express");
-const axios = require("axios");
-
-const app = express();
-app.use(express.json());
-
-const TOKEN = process.env.FONNTE_TOKEN;
-
-// endpoint health check
-app.get("/", (req, res) => {
-  res.send("Bot WhatsApp aktif 🚀");
-});
-
-app.get("/health", (req, res) => {
-  res.json({ status: "ok" });
-});
-
-// webhook dari Fonnte
 app.post("/webhook", async (req, res) => {
   const body = req.body;
 
