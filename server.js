@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const express = require("express");
 const axios = require("axios");
 
@@ -6,8 +8,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// sementara hardcode dulu untuk test
-const TOKEN = "1js38VooEe2shQ7RAj89";
+const TOKEN = (process.env.FONNTE_TOKEN || "").trim();
 
 function getReply(pesan) {
   const text = String(pesan || "").trim().toLowerCase();
@@ -127,6 +128,30 @@ function getReply(pesan) {
     );
   }
 
+  if (text.includes("pemecahan")) {
+    return (
+      "📑 *Informasi Pemecahan Bidang*\n\n" +
+      "Persyaratan umum biasanya meliputi:\n" +
+      "- Sertifikat asli\n" +
+      "- KTP/KK pemohon\n" +
+      "- SPPT PBB\n" +
+      "- Gambar/sketsa bidang bila diperlukan\n\n" +
+      "Ketik menu untuk kembali"
+    );
+  }
+
+  if (text.includes("hak tanggungan")) {
+    return (
+      "📑 *Informasi Hak Tanggungan*\n\n" +
+      "Persyaratan umum biasanya meliputi:\n" +
+      "- Sertifikat asli\n" +
+      "- APHT/SKMHT sesuai ketentuan\n" +
+      "- Identitas para pihak\n" +
+      "- Dokumen pendukung dari kreditur\n\n" +
+      "Ketik menu untuk kembali"
+    );
+  }
+
   return (
     "Maaf, pesan belum dikenali.\n\n" +
     "Silakan ketik *menu* untuk melihat daftar layanan."
@@ -137,16 +162,42 @@ app.get("/", (req, res) => {
   res.send("Bot aktif");
 });
 
+app.get("/health", (req, res) => {
+  res.json({
+    status: true,
+    tokenLoaded: !!TOKEN,
+    tokenLength: TOKEN.length,
+  });
+});
+
 app.post("/webhook", async (req, res) => {
   try {
     const body = req.body || {};
     console.log("WEBHOOK:", JSON.stringify(body, null, 2));
 
-    const sender = body.sender || body.number || body.from;
-    const pesan = body.message || body.pesan || "";
-    const isGroup = body.isgroup === true || body.isgroup === "true";
+    const sender = body.sender || body.number || body.from || "";
+    const pesan = body.message || body.pesan || body.text || "";
+    const isGroup =
+      body.isgroup === true ||
+      body.isgroup === "true" ||
+      body.group === true ||
+      body.group === "true";
 
-    if (!sender || isGroup) {
+    if (!TOKEN) {
+      console.log("ERROR: FONNTE_TOKEN kosong / tidak terbaca");
+      return res.status(200).json({
+        status: false,
+        reason: "FONNTE_TOKEN kosong",
+      });
+    }
+
+    if (!sender) {
+      console.log("ERROR: sender tidak ditemukan");
+      return res.sendStatus(200);
+    }
+
+    if (isGroup) {
+      console.log("INFO: pesan grup diabaikan");
       return res.sendStatus(200);
     }
 
@@ -175,4 +226,6 @@ app.post("/webhook", async (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log("Server jalan di port", PORT);
+  console.log("FONNTE_TOKEN terbaca:", !!TOKEN);
+  console.log("Panjang token:", TOKEN.length);
 });
