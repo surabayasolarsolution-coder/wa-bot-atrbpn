@@ -3,6 +3,7 @@ const express = require("express");
 const axios = require("axios");
 
 const app = express();
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -15,13 +16,12 @@ app.get("/", (req, res) => {
 
 app.post("/webhook", async (req, res) => {
   try {
-    console.log("Webhook masuk:", JSON.stringify(req.body, null, 2));
+    console.log("BODY MASUK:", JSON.stringify(req.body, null, 2));
 
-    const from =
+    const sender =
       req.body.sender ||
-      req.body.from ||
       req.body.number ||
-      req.body.device ||
+      req.body.from ||
       "";
 
     const message =
@@ -30,23 +30,23 @@ app.post("/webhook", async (req, res) => {
       req.body.body ||
       "";
 
-    if (!from || !message) {
+    if (!sender) {
       return res.status(200).json({
         ok: false,
-        info: "Pesan atau pengirim tidak terbaca",
+        info: "sender tidak ditemukan",
         body: req.body
       });
     }
 
     let reply = "Halo 👋 ini bot ATR/BPN Kota Batu";
 
-    const lower = String(message).toLowerCase().trim();
+    const msg = String(message).trim().toLowerCase();
 
-    if (["halo", "hallo", "hai", "hi"].includes(lower)) {
+    if (["halo", "hallo", "hai", "hi"].includes(msg)) {
       reply = `Halo 👋
 Selamat datang di layanan ATR/BPN Kota Batu
 
-Menu:
+Silakan pilih:
 1. Informasi layanan
 2. Persyaratan berkas
 3. Cek status permohonan
@@ -57,7 +57,7 @@ Menu:
     await axios.post(
       "https://api.fonnte.com/send",
       {
-        target: from,
+        target: sender,
         message: reply
       },
       {
@@ -67,12 +67,12 @@ Menu:
       }
     );
 
-    return res.status(200).json({ ok: true });
-  } catch (error) {
-    console.error("ERROR WEBHOOK:", error.response?.data || error.message);
+    return res.status(200).json({ ok: true, sender, message });
+  } catch (err) {
+    console.error("WEBHOOK ERROR:", err.response?.data || err.message);
     return res.status(200).json({
       ok: false,
-      error: error.response?.data || error.message
+      error: err.response?.data || err.message
     });
   }
 });
