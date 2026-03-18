@@ -2,18 +2,15 @@ const express = require("express");
 const axios = require("axios");
 
 const app = express();
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-const TOKEN = process.env.FONNTE_TOKEN;
-const repliedMessages = new Set();
+// sementara hardcode dulu untuk test
+const TOKEN = "1js38VooEe2shQ7RAj89";
 
 app.get("/", (req, res) => {
-  res.send("Bot WhatsApp aktif 🚀");
-});
-
-app.get("/health", (req, res) => {
-  res.json({ status: "ok" });
+  res.send("Bot aktif");
 });
 
 app.get("/webhook", (req, res) => {
@@ -23,55 +20,24 @@ app.get("/webhook", (req, res) => {
 app.post("/webhook", async (req, res) => {
   try {
     const body = req.body || {};
+    console.log("WEBHOOK:", JSON.stringify(body, null, 2));
 
-    console.log("Webhook masuk:", JSON.stringify(body, null, 2));
-
-    const pesan = String(body.pesan || body.message || body.text || "")
-      .trim()
-      .toLowerCase();
-
-    const sender = body.sender || body.pengirim || body.from || body.number;
-    const messageId = body.id || body.senderid || `${sender}-${pesan}-${body.timestamp || Date.now()}`;
+    const sender = body.sender || body.number || body.from;
+    const pesan = String(body.message || body.pesan || "").trim().toLowerCase();
     const isGroup = body.isgroup === true || body.isgroup === "true";
 
     if (!sender || isGroup) {
       return res.sendStatus(200);
     }
 
-    if (repliedMessages.has(messageId)) {
-      console.log("Pesan duplikat, skip:", messageId);
-      return res.sendStatus(200);
-    }
+    let balasan = "Halo 👋 Selamat datang di ATR/BPN Kota Batu";
 
-    repliedMessages.add(messageId);
-
-    setTimeout(() => {
-      repliedMessages.delete(messageId);
-    }, 5 * 60 * 1000);
-
-    let balasan = "Halo 👋, silakan ketik *menu*";
-
-    if (pesan.includes("halo")) {
-      balasan = "Halo 👋 Selamat datang di ATR/BPN Kota Batu";
-    } else if (pesan === "menu") {
+    if (pesan === "menu") {
       balasan =
-        "📋 *Menu Layanan ATR/BPN Kota Batu*\n\n" +
+        "📋 *Menu Layanan*\n\n" +
         "1. Informasi Sertifikat\n" +
-        "2. Cek Berkas\n" +
-        "3. Kontak Admin\n\n" +
-        "Ketik angka *1*, *2*, atau *3*.";
-    } else if (pesan === "1") {
-      balasan =
-        "📄 *Informasi Sertifikat*\n" +
-        "Silakan kirim nomor berkas atau pertanyaan Anda terkait sertifikat.";
-    } else if (pesan === "2") {
-      balasan =
-        "📂 *Cek Berkas*\n" +
-        "Silakan kirim nomor berkas Anda untuk dilakukan pengecekan.";
-    } else if (pesan === "3") {
-      balasan =
-        "☎️ *Kontak Admin*\n" +
-        "Hubungi admin ATR/BPN Kota Batu di nomor: 08xxxxxxxxxx";
+        "2. Cek Status Berkas\n" +
+        "3. Info Kantor";
     }
 
     const formData = new URLSearchParams();
@@ -86,18 +52,19 @@ app.post("/webhook", async (req, res) => {
           Authorization: TOKEN,
           "Content-Type": "application/x-www-form-urlencoded",
         },
+        timeout: 30000,
       }
     );
 
-    console.log("Balasan terkirim:", response.data);
-    res.sendStatus(200);
+    console.log("SEND RESPONSE:", response.data);
+    return res.sendStatus(200);
   } catch (err) {
-    console.log("Error webhook:", err.response?.data || err.message);
-    res.sendStatus(200);
+    console.log("ERROR:", err.response?.data || err.message);
+    return res.sendStatus(200);
   }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server jalan di port ${PORT}`);
+  console.log("Server jalan di port", PORT);
 });
