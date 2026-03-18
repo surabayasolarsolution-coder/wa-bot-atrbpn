@@ -1,69 +1,50 @@
-const express = require("express");
 const axios = require("axios");
 
-const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+const TOKEN = process.env.FONNTE_TOKEN;
 
-app.get("/", (req, res) => {
-  res.send("Bot aktif");
-});
-
-app.get("/webhook", (req, res) => {
-  res.send("Webhook aktif");
-});
-
-app.post("/webhook", async (req, res) => {
+async function cekPesan() {
   try {
-    console.log("=== WEBHOOK MASUK ===");
-    console.log(JSON.stringify(req.body, null, 2));
-
-    const sender =
-      req.body.sender ||
-      req.body.from ||
-      req.body.number ||
-      req.body.data?.sender ||
-      req.body.data?.from ||
-      "";
-
-    const message =
-      req.body.message ||
-      req.body.text ||
-      req.body.body ||
-      req.body.data?.message ||
-      req.body.data?.text ||
-      "";
-
-    console.log("SENDER:", sender);
-    console.log("MESSAGE:", message);
-
-    if (!sender) {
-      console.log("❌ sender kosong");
-      return res.status(200).send("no sender");
-    }
-
-    const reply = "Halo 👋 dari bot Railway";
-
-    const response = await axios.post(
-      "https://api.fonnte.com/send",
-      {
-        target: sender,
-        message: reply
+    const res = await axios.get("https://api.fonnte.com/get_inbox", {
+      headers: {
+        Authorization: TOKEN,
       },
-      {
-        headers: {
-          Authorization: process.env.FONNTE_TOKEN
-        }
+    });
+
+    const data = res.data;
+
+    if (!data || !data.data) return;
+
+    for (let msg of data.data) {
+      const pesan = msg.text || "";
+      const sender = msg.sender;
+
+      console.log("Pesan masuk:", pesan);
+
+      let balasan = "Halo 👋, silakan ketik menu";
+
+      if (pesan.toLowerCase().includes("halo")) {
+        balasan = "Halo 👋 Selamat datang di ATR/BPN Kota Batu";
       }
-    );
 
-    console.log("✅ BERHASIL KIRIM:", response.data);
-
-    res.status(200).send("ok");
-  } catch (error) {
-    console.log("❌ ERROR KIRIM:");
-    console.log(error.response?.data || error.message);
-
-    res.status(200).send("error");
+      await axios.post(
+        "https://api.fonnte.com/send",
+        {
+          target: sender,
+          message: balasan,
+        },
+        {
+          headers: {
+            Authorization: TOKEN,
+          },
+        }
+      );
+    }
+  } catch (err) {
+    console.log("Error:", err.message);
   }
-});
+}
+
+// jalan tiap 5 detik
+setInterval(cekPesan, 5000);
+
+console.log("Bot polling aktif...");
