@@ -5,8 +5,8 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-const TOKEN = process.env.FONNTE_TOKEN;
-const repliedMessages = new Set();
+const TOKEN = "1js38VooEe2shQ7RAj89";
+
 
 app.get("/", (req, res) => {
   res.send("Bot WhatsApp aktif 🚀");
