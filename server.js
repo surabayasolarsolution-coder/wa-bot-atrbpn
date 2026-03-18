@@ -2,29 +2,13 @@ const express = require("express");
 const axios = require("axios");
 
 const app = express();
-app.post("/webhook", async (req, res) => {
-  console.log("WEBHOOK KEHIT");
-
-  try {
-    console.log("HEADERS:", req.headers);
-    console.log("BODY RAW:", req.body);
-
-    const body = req.body;
-
-    if (!body) {
-      console.log("BODY KOSONG");
-      return res.sendStatus(200);
-    }
-
-    console.log("ISI BODY:", JSON.stringify(body, null, 2));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 const TOKEN = process.env.FONNTE_TOKEN;
 
-if (!TOKEN) {
-  console.error("FONNTE_TOKEN belum di-set di environment variable");
-}
+console.log("TOKEN ADA:", !!TOKEN);
+console.log("TOKEN PREVIEW:", TOKEN ? TOKEN.slice(0, 8) + "..." : "KOSONG");
 
 app.get("/", (req, res) => {
   res.send("Bot WhatsApp aktif 🚀");
@@ -43,102 +27,65 @@ app.get("/webhook", (req, res) => {
 
 app.post("/webhook", async (req, res) => {
   try {
-    const body = req.body;
-
     console.log("=== WEBHOOK MASUK ===");
-    console.log(JSON.stringify(body, null, 2));
+    console.log(JSON.stringify(req.body, null, 2));
 
-    let messages = [];
+    const body = req.body || {};
 
-    if (Array.isArray(body?.data)) {
-      messages = body.data;
-    } else if (body && typeof body === "object") {
-      messages = [body];
-    }
+    const pesan = String(body.pesan || body.message || body.text || "")
+      .trim()
+      .toLowerCase();
 
-    if (messages.length === 0) {
-      console.log("Tidak ada pesan yang bisa diproses");
+    const sender = body.sender || body.pengirim || body.from || body.number;
+
+    console.log("Pesan:", pesan);
+    console.log("Dari:", sender);
+
+    if (!sender) {
+      console.log("Sender tidak ditemukan");
       return res.sendStatus(200);
     }
 
-    for (const msg of messages) {
-      const rawText = msg.text || msg.message || msg.chat || "";
-      const pesan = String(rawText).trim().toLowerCase();
+    let balasan = "Halo 👋, silakan ketik *menu*";
 
-      const sender =
-        msg.sender ||
-        msg.from ||
-        msg.number ||
-        msg.phone ||
-        msg.whatsapp;
-
-      console.log("Pesan terdeteksi:", pesan);
-      console.log("Sender terdeteksi:", sender);
-
-      if (!sender) {
-        console.log("Skip: sender tidak ditemukan");
-        continue;
-      }
-
-      let balasan = "Halo 👋, silakan ketik *menu*";
-
-      if (pesan.includes("halo")) {
-        balasan = "Halo 👋 Selamat datang di ATR/BPN Kota Batu";
-      } else if (pesan.includes("menu")) {
-        balasan =
-          "📋 *Menu Layanan:*\n\n" +
-          "1. Informasi Sertifikat\n" +
-          "2. Cek Berkas\n" +
-          "3. Kontak Admin\n\n" +
-          "Ketik angka 1/2/3";
-      } else if (pesan === "1") {
-        balasan = "Silakan kirim nomor berkas sertifikat Anda.";
-      } else if (pesan === "2") {
-        balasan = "Silakan kirim nomor berkas untuk pengecekan.";
-      } else if (pesan === "3") {
-        balasan = "Hubungi admin di 08xxxxxxxxxx";
-      }
-
-      console.log("Balasan yang akan dikirim:", balasan);
-
-      try {
-        const formData = new URLSearchParams();
-        formData.append("target", sender);
-        formData.append("message", balasan);
-
-        const sendResponse = await axios.post(
-          "https://api.fonnte.com/send",
-          formData,
-          {
-            headers: {
-              Authorization: TOKEN,
-              "Content-Type": "application/x-www-form-urlencoded",
-            },
-            timeout: 30000,
-          }
-        );
-
-        console.log("=== RESPONSE FONNTE SEND ===");
-        console.log(JSON.stringify(sendResponse.data, null, 2));
-      } catch (sendErr) {
-        console.log("=== ERROR KIRIM KE FONNTE ===");
-        console.log("Message:", sendErr.message);
-
-        if (sendErr.response) {
-          console.log("Status:", sendErr.response.status);
-          console.log(
-            "Data:",
-            JSON.stringify(sendErr.response.data, null, 2)
-          );
-        }
-      }
+    if (pesan.includes("halo")) {
+      balasan = "Halo 👋 Selamat datang di ATR/BPN Kota Batu";
+    } else if (pesan.includes("menu")) {
+      balasan =
+        "📋 *Menu Layanan:*\n\n" +
+        "1. Informasi Sertifikat\n" +
+        "2. Cek Berkas\n" +
+        "3. Kontak Admin\n\n" +
+        "Ketik angka 1/2/3";
+    } else if (pesan === "1") {
+      balasan = "Silakan kirim nomor berkas sertifikat Anda.";
+    } else if (pesan === "2") {
+      balasan = "Silakan kirim nomor berkas untuk pengecekan.";
+    } else if (pesan === "3") {
+      balasan = "Hubungi admin di 08xxxxxxxxxx";
     }
 
-    return res.sendStatus(200);
+    const formData = new URLSearchParams();
+    formData.append("target", sender);
+    formData.append("message", balasan);
+
+    const response = await axios.post(
+      "https://api.fonnte.com/send",
+      formData,
+      {
+        headers: {
+          Authorization: TOKEN,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      }
+    );
+
+    console.log("RESPONSE FONNTE:", response.data);
+
+    res.sendStatus(200);
   } catch (err) {
-    console.log("=== ERROR WEBHOOK ===");
-    console.log(err.message);
-    return res.sendStatus(200);
+    console.log("ERROR:", err.response?.data || err.message);
+    res.sendStatus(200);
   }
 });
 
