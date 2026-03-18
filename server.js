@@ -7,7 +7,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // sementara hardcode dulu untuk test
-const TOKEN = "EryyxiDUJr2SUGQnWBZqDo8eqJRGh7ifFvkCCnB6jcrgpF2zSx";
+const TOKEN = "rU8sg9QzdA8RxhWHMVu1";
 
 app.get("/", (req, res) => {
   res.send("Bot aktif");
