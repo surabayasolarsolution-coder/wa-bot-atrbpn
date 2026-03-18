@@ -2,6 +2,21 @@ const express = require("express");
 const axios = require("axios");
 
 const app = express();
+app.post("/webhook", async (req, res) => {
+  console.log("WEBHOOK KEHIT");
+
+  try {
+    console.log("HEADERS:", req.headers);
+    console.log("BODY RAW:", req.body);
+
+    const body = req.body;
+
+    if (!body) {
+      console.log("BODY KOSONG");
+      return res.sendStatus(200);
+    }
+
+    console.log("ISI BODY:", JSON.stringify(body, null, 2));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
