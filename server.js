@@ -6,10 +6,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 const TOKEN = process.env.FONNTE_TOKEN;
-
-console.log("ENV TOKEN ADA:", !!TOKEN);
-console.log("ENV TOKEN PANJANG:", TOKEN ? TOKEN.length : 0);
-console.log("ENV TOKEN PREVIEW:", TOKEN ? TOKEN.slice(0, 6) + "..." : "KOSONG");const repliedMessages = new Set();
+const repliedMessages = new Set();
 
 app.get("/", (req, res) => {
   res.send("Bot WhatsApp aktif 🚀");
@@ -81,18 +78,14 @@ app.post("/webhook", async (req, res) => {
     formData.append("target", sender);
     formData.append("message", balasan);
 
-   const response = await axios.post(
-  "https://api.fonnte.com/send",
-  formData,
-  {
-    headers: {
-      Authorization: TOKEN,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-  }
-);
-
-console.log("RESPONSE FONNTE:", response.data);
+    const response = await axios.post(
+      "https://api.fonnte.com/send",
+      formData,
+      {
+        headers: {
+          Authorization: TOKEN,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
       }
     );
 
