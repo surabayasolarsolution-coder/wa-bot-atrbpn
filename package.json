@@ -1,6 +1,5 @@
-
-{
-  "name": "wa-bot-atrbpn",
+}
+ "name": "wa-bot-atrbpn",
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
